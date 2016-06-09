@@ -2,12 +2,29 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Japanese Popup Dictionary</title>
     <style>
+      body {
+        padding-top: 10px;
+      }
+      input {
+        width: 275px;
+        height: 34px;
+      }
+      button {
+        width: 100px;
+        height: 40px;
+      }
       #text, #popup {
         max-width: 600px;
       }
+      #text {
+        margin-top: 15px;
+        font-size: 50px;
+      }
       #popup {
+        font-size: 20px;
         position: fixed;
         background-color: cyan;
         left: 0;
@@ -19,7 +36,7 @@
   <body>
     <input>
     <button>Save</button>
-    <div id="text">Paste Japanese text into the input box, then press the "Save" button to save the text. After that, you can click on any Japanese words that you don't know to look them up.</div>
+    <div id="text"><p>Paste Japanese text into the input box, then press the "Save" button to save the text.</p><p>After that, you can click on any Japanese words that you don't know to look them up.<p/></div>
     <div id="popup"></div>
 
     <script src="dictionary.js"></script>
