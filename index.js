@@ -2,67 +2,80 @@ var textContainer = document.querySelector('#text')
 var popup = document.querySelector('#popup')
 var button = document.querySelector('button')
 var input = document.querySelector('input')
-var characters = []
+
+// It's simpler to just create a global reference to popupRemoveButton
+// than redefining it every time I want to rerender the popup translation.
+var popupRemoveButton = document.createElement('button')
+popupRemoveButton.setAttribute('id', 'popup-remove')
+popupRemoveButton.textContent = '✖'
+popupRemoveButton.addEventListener('click', e => {
+  popup.setAttribute('hidden', true)
+})
+
+// Global variables from other files: dictionary, kanjiDictionary.
+// The text variable is the only global variable that we use to keep track 
+// of the state. It stores the Japanese text that the user entered in.
 var text
 
 var displayTranslation = ({word, translations}) => {
-  popup.innerHTML = 'word: ' + word + ', translation: ' + translations.join(', ')
+  popup.innerHTML = ''
+  popup.removeAttribute('hidden')
+
+  var wordHTML = document.createElement('div')
+  wordHTML.textContent = 'Word: ' + word
+  popup.appendChild(wordHTML)
+
+  var translationHTML = document.createElement('div')
+  translationHTML.textContent = 'Translation: ' + translations.join(', ')
+  popup.appendChild(translationHTML)
+
+  popup.appendChild(popupRemoveButton)
 }
 
-button.addEventListener('click', e => {
-  text = input.value
+var saveText = () => {
+  text = input.value || localStorage.getItem('text') || ''
   input.value = ''
   textContainer.textContent = ''
 
-  text.split('').map(ch => {
+  text.split('').forEach((ch, i) => {
     var el = document.createElement('span')
+    el.setAttribute('data-index', i)
     el.textContent = ch
-    return el
-  }).forEach((el, i) => {
-    // The reason why I'm appending each element to the DOM is so that I can get
-    // the character's x-position, which is more accurate than the offsetIndex 
-    // method. Sadly, the y-position isn't accurate for this method because it doesn't
-    // take into consideration the scrollY value, and the scrollY value isn't compatible
-    // across all browsers, so I have to just compare the offsetIndex to be able to
-    // determine which character gets touched by the user.
     textContainer.appendChild(el)
-    var sides = el.getClientRects()[0]
-    characters.push(Object.assign(
-      {}, 
-      {left: sides.left, right: sides.right, top: sides.top, bottom: sides.bottom},
-      {text: el.textContent, index: i}
-    ))
   })
 
-  textContainer.textContent = text
-})
+  if (text.length < 10000 && text.length > 0) {
+    localStorage.setItem('text', text)
+  } else {
+    localStorage.removeItem('text')
+  }
+}
 
-textContainer.addEventListener('click', e => {
-  // offsetIndex isn't a reliable source for determining the character, since it 
-  // tends to give the character to the right if you click the right side of a character.
-  // To fix this, I'm going to use e.clientX, which gives a more accurate x-value,
-  // then we're going to filter for characters that are within 1 of offsetIndex.
-  var offsetIndex = document.caretRangeFromPoint(e.clientX, e.clientY).startOffset
+var lookupWord = e => {
+  var wordStartIndex = Number(e.target.getAttribute('data-index'))
 
-  var clickedCharacter = characters.filter(ch => {
-    return ch.left < e.clientX && ch.right && e.clientX < ch.right
-  }).filter(ch => {
-    return Math.abs(ch.index - offsetIndex) <= 1
-  })[0]
-
-  if (clickedCharacter === undefined) {
+  if (wordStartIndex == undefined) {
     return
   }
 
-  var offsetIndex = clickedCharacter.index
-
-  // Check word definitions for the 10-character word, then 9, then 8, 7, ..., 2, 1
   for (var wordLength = 10; wordLength > 0; wordLength--) {
-    var word = text.slice(offsetIndex, offsetIndex + wordLength)
+    var word = text.slice(wordStartIndex, wordStartIndex + wordLength)
     if (dictionary[word]) {
       displayTranslation({word, translations: dictionary[word]})
-      break
+      return
     }
   }
-})
 
+  // If there were no translations found for the dictionary, check the kanji dictionary...
+  if (kanjiDictionary[text[wordStartIndex]]) {
+    displayTranslation({word: text[wordStartIndex], translations: [kanjiDictionary[text[wordStartIndex]]]})
+  }
+}
+
+button.addEventListener('click', saveText)
+textContainer.addEventListener('click', lookupWord)
+
+if (typeof localStorage.getItem('text') === 'string' &&
+    localStorage.getItem('text').length > 0) {
+  saveText()
+}
